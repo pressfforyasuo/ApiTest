@@ -7,6 +7,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using System.Linq;
 using System;
+using ApiTest.Services;
 
 namespace ApiTest
 {
@@ -34,6 +35,8 @@ namespace ApiTest
                     Version = "v1",
                 });
             });
+
+            services.AddScoped<IUserService, UserService>();
         }
 
         public void Configure(IApplicationBuilder app, IWebHostEnvironment env, UserDbContext dbContext)
@@ -66,17 +69,17 @@ namespace ApiTest
             if (env.IsDevelopment())
             {
                 app.UseDeveloperExceptionPage();
+
+                app.UseSwagger();
+                app.UseSwaggerUI(c =>
+                {
+                    c.SwaggerEndpoint("/swagger/v1/swagger.json", "ApiTestAton V1");
+                });
             }
 
             app.UseRouting();
 
             app.UseAuthorization();
-
-            app.UseSwagger();
-            app.UseSwaggerUI(c =>
-            {
-                c.SwaggerEndpoint("/swagger/v1/swagger.json", "ApiTestAton V1");
-            });
 
             app.UseEndpoints(endpoints =>
             {
