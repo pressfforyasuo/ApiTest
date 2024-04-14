@@ -1,14 +1,12 @@
+using ApiTest.Models;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
-using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
-using Microsoft.Extensions.Logging;
-using System;
-using System.Collections.Generic;
 using System.Linq;
-using System.Threading.Tasks;
+using System;
 
 namespace ApiTest
 {
@@ -21,15 +19,50 @@ namespace ApiTest
 
         public IConfiguration Configuration { get; }
 
-        // This method gets called by the runtime. Use this method to add services to the container.
         public void ConfigureServices(IServiceCollection services)
         {
+            services.AddDbContext<UserDbContext>(options =>
+            options.UseSqlite(Configuration.GetConnectionString("DefaultConnection")));
+
             services.AddControllers();
+
+            services.AddSwaggerGen(c =>
+            {
+                c.SwaggerDoc("v1", new Microsoft.OpenApi.Models.OpenApiInfo
+                {
+                    Title = "ApiTestAton",
+                    Version = "v1",
+                });
+            });
         }
 
-        // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.
-        public void Configure(IApplicationBuilder app, IWebHostEnvironment env)
+        public void Configure(IApplicationBuilder app, IWebHostEnvironment env, UserDbContext dbContext)
         {
+            if (dbContext.Database.GetPendingMigrations().Any())
+            {
+                dbContext.Database.Migrate();
+            }
+
+            if (!dbContext.Users.Any(u => u.Login == "admin"))
+            {
+                var adminUser = new User
+                {
+                    Guid = Guid.NewGuid(),
+                    Login = "admin",
+                    Password = "123",
+                    Name = "Admin",
+                    Gender = 1,
+                    Admin = true,
+                    CreatedOn = DateTime.Now,
+                    CreatedBy = "admin",
+                    ModifiedOn = DateTime.Now,
+                    ModifiedBy = "admin",
+                };
+
+                dbContext.Users.Add(adminUser);
+                dbContext.SaveChanges();
+            }
+
             if (env.IsDevelopment())
             {
                 app.UseDeveloperExceptionPage();
@@ -38,6 +71,12 @@ namespace ApiTest
             app.UseRouting();
 
             app.UseAuthorization();
+
+            app.UseSwagger();
+            app.UseSwaggerUI(c =>
+            {
+                c.SwaggerEndpoint("/swagger/v1/swagger.json", "ApiTestAton V1");
+            });
 
             app.UseEndpoints(endpoints =>
             {
